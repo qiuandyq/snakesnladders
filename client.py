@@ -14,8 +14,6 @@ pygame.display.set_caption("Client")
 
 clientNumber = 0
 
-
-
 class Player():
     def __init__(self, x, y, width, height, colour):
         self.x = x
@@ -28,8 +26,9 @@ class Player():
     def draw (self, win):
         pygame.draw.rect(window, self.colour, self.rect)
 
-    #use to move
-    #def move(self):
+    #use to move. Should have way to tell if moving onto next row
+    def move(self, size):
+        self.x += size
 
 
 def redrawWindow(window,player):
@@ -37,16 +36,13 @@ def redrawWindow(window,player):
     player.draw(window)
     pygame.display.update()
 
-
-
-
 def main():
 
     running = True
     p = Player(25,680,100,100,(255,0,0))
 
-    while running:
 
+    while running:
         window.fill((0,0,0))
         window.blit(bg, (0, 0))
         for event in pygame.event.get():
@@ -54,7 +50,9 @@ def main():
                 running = False
                 pygame.quit()
 
-        redrawWindow(window,p)
+        p.move(40)
+        redrawWindow(window, p)
+
 
 
 main()
