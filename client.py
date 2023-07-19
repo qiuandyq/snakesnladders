@@ -1,3 +1,5 @@
+import time
+
 import pygame
 import socket
 #from Game import Game
@@ -16,11 +18,11 @@ pygame.display.set_caption("Client")
 clientNumber = 0
 
 class Player():
-    def __init__(self, x, y, width, height, colour):
+    def __init__(self, x: object, y: object, width: object, height: object, colour: object) -> object:
         self.x = x
         self.y = y
         self.img = pygame.image.load('blue.png')
-        self.img = pygame.transform.scale(self.img,(45,90))
+        self.img = pygame.transform.scale(self.img,(25,50))
         self.width = width
         self.height = height
         self.colour = colour
@@ -30,7 +32,7 @@ class Player():
 
     #use to move. Should have way to tell if moving onto next row
     def move(self, size):
-        self.x += size
+        self.x += (size*14)         #wanted to make it go to next block each time
 
 
 def redrawWindow(window,player):
@@ -41,7 +43,7 @@ def redrawWindow(window,player):
 def main():
 
     running = True
-    p = Player(25,680,100,100,(255,0,0))
+    p = Player(230,680,100,100,(255,0,0))
 
 
     while running:
@@ -53,6 +55,7 @@ def main():
                 pygame.quit()
 
         p.move(4)
+        time.sleep(1)       #added sleep to test how far piece will go with each move
         redrawWindow(window, p)
 
 
