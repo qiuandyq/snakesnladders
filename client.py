@@ -1,5 +1,6 @@
 import pygame
 import socket
+#from Game import Game
 width = 1200
 height = 800
 
@@ -18,13 +19,14 @@ class Player():
     def __init__(self, x, y, width, height, colour):
         self.x = x
         self.y = y
+        self.img = pygame.image.load('blue.png')
+        self.img = pygame.transform.scale(self.img,(45,90))
         self.width = width
         self.height = height
         self.colour = colour
-        self.rect = (x,y,width, height)
 
     def draw (self, win):
-        pygame.draw.rect(window, self.colour, self.rect)
+        window.blit(self.img, (self.x, self.y))
 
     #use to move. Should have way to tell if moving onto next row
     def move(self, size):
@@ -50,7 +52,7 @@ def main():
                 running = False
                 pygame.quit()
 
-        p.move(40)
+        p.move(4)
         redrawWindow(window, p)
 
 
