@@ -1,13 +1,13 @@
 import pygame
 import socket
-width = 800
+width = 1200
 height = 800
 
 pygame.init()
 
 window = pygame.display.set_mode((width, height))
 
-bg = pygame.image.load('background board.jpg')
+bg = pygame.image.load('BoardImage.png')
 bg = pygame.transform.scale(bg,(width,height))
 
 pygame.display.set_caption("Client")
