@@ -32,7 +32,7 @@ class Player():
 
     #use to move. Should have way to tell if moving onto next row
     def move(self, size):
-        self.x += (size*14)         #wanted to make it go to next block each time
+        self.x += (size*55)         #wanted to make it go to next block each time
 
 
 def redrawWindow(window,player):
@@ -43,7 +43,7 @@ def redrawWindow(window,player):
 def main():
 
     running = True
-    p = Player(230,680,100,100,(255,0,0))
+    p = Player(215,680,100,100,(255,0,0))
 
 
     while running:
@@ -54,7 +54,7 @@ def main():
                 running = False
                 pygame.quit()
 
-        p.move(4)
+        p.move(1)           #move should be able to take number of blocks to go forward
         time.sleep(1)       #added sleep to test how far piece will go with each move
         redrawWindow(window, p)
 
