@@ -53,6 +53,11 @@ def compute_path(client_id, code):
 
 
 # Handles the client during the game and executes game logic
+#
+# Params: 
+#   server: server socket
+#   connection: connection socket
+#   address: address of the client
 def game_thread(server, connection, address):
     global turn_order_current
     print(f"Game thread {address} has started")
@@ -83,6 +88,11 @@ def game_thread(server, connection, address):
                 con.send(bytes(f"turn {turn_order[turn_order_current]}", "utf-8"))
 
 # Handles the connection of the client
+#
+# Params: 
+#   server: server socket
+#   connection: connection socket
+#   address: address of the client
 def client_thread(server, connection, address):
     global turn_order
     print(f"New client connected {connection} with address {address}")
