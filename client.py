@@ -76,6 +76,20 @@ def check_button_click(mouse_pos, button):
     return button.rect.collidepoint(mouse_pos)
 
 
+class Text:
+    def __init__(self, text, position, color, font_size=30):
+        self.text = text
+        self.position = position
+        self.color = color
+        self.font_size = font_size
+        self.font = pygame.font.Font(None, self.font_size)
+
+    def draw(self, window):
+        text_surface = self.font.render(self.text, True, self.color)
+        text_rect = text_surface.get_rect(center=self.position)
+        window.blit(text_surface, text_rect)
+
+
 def draw_grid():
     for x in range(grid_Xmargin, win_width - grid_Xmargin, cell_size):
         for y in range(grid_Ymargin, win_height - grid_Ymargin, cell_size):
@@ -93,11 +107,15 @@ def redrawWindow(window, player, game_state):
 def main():
 
     running = True
-    game_state = 0   #game state for display
+    game_state = 0   # game state for display
 
     p = Player(0, 0, 25, 50, (255, 0, 0))
-    join_button = Button(win_width // 2 - 50, win_height //
-                         2 - 20, 100, 40, "Join")
+    join_button = Button(win_width // 2 - 50, win_height // 2 - 20, 100, 40, "Join")
+    join_text = Text("Joined. Waiting for other players to join.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
+    ready_text = Text("x players joined. Ready to start.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
+    start_button = Button(win_width // 2 - 50, win_height // 2, 100, 40, "Start")
+    win_text = Text("You won!", (win_width // 2, win_height // 2 - 100), (0, 255, 0))
+    lose_text = Text("You lose", (win_width // 2, win_height // 2 - 100), (255, 0, 0))
 
     while running:
         # window.fill((255,255,255))
@@ -110,21 +128,41 @@ def main():
                 mouse_pos = pygame.mouse.get_pos()
                 if game_state == 0 and check_button_click(mouse_pos, join_button):
                     # TODO: Signal Server
+                    # TODO: proceed to game state 1, 2, 3, 4, 5
                     game_state = 1
         
         # window.fill((255,255,255))
         window.blit(bg, (0, 0))
 
+        # ready to join
         if game_state == 0:
             join_button.draw()
 
-        if game_state == 1:
+        # joined, waiting for others
+        elif game_state == 1:
+            join_text.draw(window)
+
+        # Ready to start
+        elif game_state == 2:
+            ready_text.draw(window)
+            start_button.draw()
+
+        # in game
+        elif game_state == 3:
             draw_grid()
             p.draw(window)
             time.sleep(1)         # added sleep to test how far piece will go with each move
             p.move(1)             # move should be able to take number of blocks to go forward
-
             # redrawWindow(window, p, game_state)
+
+        # win screen
+        elif game_state == 4:
+            win_text.draw(window)
+        
+        # lose screen
+        elif game_state == 5:
+            lose_text.draw(window)
+
         pygame.display.update()
 
 
