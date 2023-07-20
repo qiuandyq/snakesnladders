@@ -4,16 +4,23 @@ import pygame
 import socket
 #from Game import Game
 width = 1200
-height = 800
+height = 700
+cell_size = 60
+grid_size = 10
+grid_Xmargin = (width-cell_size*grid_size)//2
+grid_Ymargin = (height-cell_size*grid_size)//2
+
 
 pygame.init()
 
 window = pygame.display.set_mode((width, height))
-
-bg = pygame.image.load('BoardImage.png')
-bg = pygame.transform.scale(bg,(width,height))
-
 pygame.display.set_caption("Client")
+
+# bg = pygame.image.load('BoardImage.png')
+# bg = pygame.transform.scale(bg,(width,height))
+
+bg = pygame.Surface((width, height))
+bg.fill((255, 255, 255))
 
 clientNumber = 0
 
@@ -27,28 +34,48 @@ class Player():
         self.height = height
         self.colour = colour
 
+        self.calculate_screen_position()
+
+    def calculate_screen_position(self):
+        self.screen_x = grid_Xmargin + self.x * cell_size + cell_size // 2 -self.width // 2
+        self.screen_y = height - grid_Ymargin - self.y*cell_size - self.height
+
     def draw (self, win):
-        window.blit(self.img, (self.x, self.y))
+        window.blit(self.img, (self.screen_x, self.screen_y))
 
-    #use to move. Should have way to tell if moving onto next row
+    #use to move. Move to next row when reaching the end
     def move(self, size):
-        self.x += (size*55)         #wanted to make it go to next block each time
+        self.calculate_screen_position()
+        if self.y % 2 == 0:  # Even y-coordinate (move right)
+            if self.x + size <= grid_size-1:
+                self.x += 1
+            else:
+                self.y += 1
+        else:  # Odd y-coordinate (move left)
+            if self.x - size >= 0:
+                self.x -= size
+            else:
+                self.y += 1
 
+def draw_grid():
+    for x in range(grid_Xmargin, width - grid_Xmargin, cell_size):
+        for y in range(grid_Ymargin, height - grid_Ymargin, cell_size):
+            pygame.draw.rect(bg, (0, 0, 0), (x, y, cell_size, cell_size), 1)
 
 def redrawWindow(window,player):
-    #window.fill((255,255,255))
+    window.blit(bg, (0, 0))
+    draw_grid()
     player.draw(window)
     pygame.display.update()
 
 def main():
 
     running = True
-    p = Player(215,680,100,100,(255,0,0))
+    p = Player(0, 0, 25, 50, (255, 0, 0))
 
 
     while running:
-        window.fill((0,0,0))
-        window.blit(bg, (0, 0))
+        # window.fill((255,255,255))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
