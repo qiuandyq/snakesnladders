@@ -37,15 +37,15 @@ class Player():
         self.calculate_screen_position()
 
     def calculate_screen_position(self):
-        self.screen_x = grid_Xmargin + self.x * cell_size + cell_size // 2 -self.width // 2
-        self.screen_y = height - grid_Ymargin - self.y*cell_size - self.height
+        self.screen_x = grid_Xmargin + self.x * cell_size + cell_size //2 - self.width // 2
+        self.screen_y = height - grid_Ymargin - self.y*cell_size - cell_size //2  - self.height //2
 
     def draw (self, win):
+        self.calculate_screen_position()
         window.blit(self.img, (self.screen_x, self.screen_y))
 
     #use to move. Move to next row when reaching the end
     def move(self, size):
-        self.calculate_screen_position()
         if self.y % 2 == 0:  # Even y-coordinate (move right)
             if self.x + size <= grid_size-1:
                 self.x += 1
@@ -56,6 +56,7 @@ class Player():
                 self.x -= size
             else:
                 self.y += 1
+        
 
 def draw_grid():
     for x in range(grid_Xmargin, width - grid_Xmargin, cell_size):
@@ -64,14 +65,15 @@ def draw_grid():
 
 def redrawWindow(window,player):
     window.blit(bg, (0, 0))
-    draw_grid()
     player.draw(window)
     pygame.display.update()
 
 def main():
 
     running = True
+    draw_grid()
     p = Player(0, 0, 25, 50, (255, 0, 0))
+    
 
 
     while running:
