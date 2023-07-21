@@ -11,59 +11,88 @@ client_count = 0
 clients = []
 game_end = False
 turn_order = []
-turn_order_count = 0
+turn_order_current = 0
+snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
+ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
 
-# TODO: create board 
-def create_board():
-    pass
-
+# Establishes the turn order for the game by randomizing client id
 def establish_turn_order():
     order = []
-    for c in clients:
-        order.append(c[1][1])
+    for i in range(len(clients)):
+        order.append(i)
     random.shuffle(order)
     return order
 
-# Computes the path of client based on the dice roll
-# TODO: compute_path should keep track of clients position 
-# and the server should know which position correspond to what
-# this function should also determine if the game has ended or not
+# Computes the path of the player based on dice roll
+#
+# Params:
+#   client_id: id of the client
+#   code: code sent by the client
 def compute_path(client_id, code):
     global clients
-    for c in clients:
-        if c[1][1] == client_id:
-            # TODO: Update position
-            pass
-    pass
+    dice_num = int(code.split()[1])
+    path = []
+
+    # increments the position and updates the path
+    for i in range(dice_num):
+        if clients[client_id][2] == 100:
+            break
+        path.append(clients[client_id][2] + 1)
+        clients[client_id][2] += 1
+
+    # check if the position landed is on a snake or ladder
+    if clients[client_id][2] in snakes:
+        clients[client_id][2] = snakes[clients[client_id][2]]
+        path.append(clients[client_id][2])
+    elif clients[client_id][2] in ladders:
+        clients[client_id][2] = ladders[clients[client_id][2]]
+        path.append(clients[client_id][2])
+
+    return path
+
+
 
 # Handles the client during the game and executes game logic
+#
+# Params: 
+#   server: server socket
+#   connection: connection socket
+#   address: address of the client
 def game_thread(server, connection, address):
-    global turn_order_count
+    global turn_order_current
     print(f"Game thread {address} has started")
-    print(f"Turn order: {turn_order} {turn_order_count}")
-
-    for c in clients:
-        print(f"Client {type(c)}\n")
+    print(f"Turn order: {turn_order}")
 
     while True:
         code = (connection.recv(1024)).decode()
 
-        # computes and sends the path and turn packet in format of 
-        # "path {client address} {path in array}"
-        # "turn {client address}"
         if "dice" in code:
-            path = compute_path(address[1], code)
+            # compute the path and send it to all clients
+            # if the client reaches 100, send winner packet to all clients
+            path = compute_path(turn_order_current, code)
+            if path[-1] == 100:
+                for (con, _, _) in clients:
+                    con.send(bytes(f"path {turn_order[turn_order_current]} {path}", "utf-8"))
+                    con.send(bytes(f"winner {turn_order[turn_order_current]}", "utf-8"))
+                game_end = True
+                break
             
-            if turn_order_count == len(turn_order) - 1:
-                turn_order_count = 0
+            if turn_order_current == len(turn_order) - 1:
+                turn_order_current = 0
             else:
-                turn_order_count += 1
+                turn_order_current += 1
 
+            # sends the path of the player to all clients and the turn of the next client
             for (con, _, _) in clients:
-                con.send(bytes(f"path {address[1]} {path} {code}", "utf-8"))
-                con.send(bytes(f"turn {turn_order[turn_order_count]}", "utf-8"))
+                con.send(bytes(f"path {turn_order[turn_order_current - 1]} {path}", "utf-8"))
+                con.send(bytes(f"turn {turn_order[turn_order_current]}", "utf-8"))
 
 # Handles the connection of the client
+#
+# Params: 
+#   server: server socket
+#   connection: connection socket
+#   address: address of the client
 def client_thread(server, connection, address):
     global turn_order
     print(f"New client connected {connection} with address {address}")
@@ -86,7 +115,7 @@ def client_thread(server, connection, address):
                 turn_order = establish_turn_order()
                 for (con, addr, _) in clients:
                     con.send(bytes("start 1", "utf-8"))
-                    con.send(bytes(f"turn {turn_order[turn_order_count]}", "utf-8"))
+                    con.send(bytes(f"turn {turn_order[turn_order_current]}", "utf-8"))
                     threading._start_new_thread(game_thread, (server, con, addr))
             else:
                 for (con, _, _) in clients:
@@ -126,7 +155,8 @@ def main():
             # Accept the connection and modify global client data
             connection, address = server.accept()
             client_count += 1
-            clients.append([connection, address, (0,0)])
+            # client array should include connection, address, and position
+            clients.append([connection, address, 0])
 
             # Start the thread for the client handling
             threading._start_new_thread(client_thread, (server, connection, address))
