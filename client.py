@@ -1,11 +1,12 @@
 import time
 import select
-
 import pygame
 import socket
-# from Game import Game
+import random 
+
 win_width = 1200
 win_height = 700
+boardSize = 500
 cell_size = 60
 grid_size = 10
 grid_Xmargin = (win_width-cell_size*grid_size)//2
@@ -16,11 +17,17 @@ pygame.init()
 window = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Client")
 
-# bg = pygame.image.load('BoardImage.png')
-# bg = pygame.transform.scale(bg,(width,height))
-
 bg = pygame.Surface((win_width, win_height))
 bg.fill((255, 255, 255))
+board = pygame.image.load('BoardImage.png')
+diceImaages = [pygame.image.load("dice1.png"), pygame.image.load("dice2.png"), pygame.image.load("dice3.png"),
+               pygame.image.load("dice4.png"), pygame.image.load("dice5.png"), pygame.image.load("dice6.png")]
+board = pygame.transform.scale(board,(win_width, win_height))
+
+blue = pygame.transform.scale(pygame.image.load('blue.png'), (40, 40))
+green = pygame.transform.scale(pygame.image.load('green.png'), (40, 40))
+purple = pygame.transform.scale(pygame.image.load('purple.png'), (40, 40))
+yellow = pygame.transform.scale(pygame.image.load('yellow.png'), (40, 40))
 
 clientNumber = 0
 
@@ -62,14 +69,24 @@ class Socket:
         self.connected = False
 
 class Player():
-    def __init__(self, x: object, y: object, width: object, height: object, colour: object) -> object:
+    def __init__(self, x, y, width, height, colour):
         self.x = x
         self.y = y
-        self.img = pygame.image.load('blue.png')
-        self.img = pygame.transform.scale(self.img, (25, 50))
         self.width = width
         self.height = height
         self.colour = colour
+        self.img = self.get_player_img(colour)
+    
+    def get_player_img(self, colour):
+        if colour == yellow:
+            return yellow
+        elif colour == green:
+            return green
+        elif colour == blue:
+            return blue
+        elif colour == purple:
+            return purple
+        
 
     def calculate_screen_position(self):
         self.screen_x = grid_Xmargin + self.x * \
@@ -77,7 +94,7 @@ class Player():
         self.screen_y = win_height - grid_Ymargin - self.y * \
             cell_size - cell_size // 2 - self.height // 2
 
-    def draw(self, win):
+    def draw(self, window):
         self.calculate_screen_position()
         window.blit(self.img, (self.screen_x, self.screen_y))
 
@@ -94,6 +111,26 @@ class Player():
             else:
                 self.y += 1
 
+class DiceButton:
+    def __init__(self, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.dice_images = diceImaages
+        self.current_dice = random.randint(1, 6)
+
+    def draw_dice(self):
+        #pygame.draw.rect(window, (0, 0, 0), self.rect, 2)
+        window.blit(self.dice_images[self.current_dice - 1], (win_width / 2 + boardSize - diceImaages[0].get_width(),
+                                                  win_height / 2 - diceImaages[0].get_height()))
+
+    def roll_dice(self):
+        self.current_dice = random.randint(1, 6)
+        self.draw_dice()
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = pygame.mouse.get_pos()
+            if self.rect.collidepoint(mouse_pos):
+                self.roll_dice()
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -132,11 +169,23 @@ def draw_grid():
             pygame.draw.rect(bg, (0, 0, 0), (x, y, cell_size, cell_size), 1)
 
 
-def redrawWindow(window, player, game_state):
-    window.blit(bg, (0, 0))
-    # if game_state == 1:
-    # draw_grid()
-    # player.draw(window)
+def get_coordinates_from_position(position):
+    row = grid_size - 1 - (position - 1) // grid_size
+    col = (position - 1) % grid_size
+
+    x = grid_Xmargin + col * cell_size + cell_size // 2
+    y = win_height - (grid_Ymargin + row * cell_size) - cell_size // 2
+
+    return x, y
+
+def redrawWindow(window, players, dice, game_state):
+    window.blit(board, (0, 0))
+    pygame.draw.rect(bg, (0, 0, 0), (grid_Xmargin, grid_Ymargin, cell_size * grid_size, cell_size * grid_size), 2)
+    
+    for player in players:
+        player.draw(window)
+
+    dice.draw_dice()
     pygame.display.update()
 
 
@@ -145,24 +194,30 @@ def main():
     running = True
     game_state = 0   # game state for display
 
-    p = Player(0, 0, 25, 50, (255, 0, 0))
+    player = [Player(0, 0, 250, 50, yellow), Player(0, 0, 200, 50, green)]
+
+    dice_button = DiceButton(win_width / 2 + boardSize - diceImaages[0].get_width(),
+                            win_height / 2 - diceImaages[0].get_height(), diceImaages[0].get_width(), diceImaages[0].get_height())
     join_button = Button(win_width // 2 - 50, win_height // 2 - 20, 100, 40, "Join")
     join_text = Text("Joined. Waiting for other players to join.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
-    ready_text = Text("x players joined. Ready to start.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
+    ready_text = Text("Players joined. Ready to start.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
     start_button = Button(win_width // 2 - 50, win_height // 2, 100, 40, "Start")
     win_text = Text("You won!", (win_width // 2, win_height // 2 - 100), (0, 255, 0))
     lose_text = Text("You lose", (win_width // 2, win_height // 2 - 100), (255, 0, 0))
 
-    # connect to the socket and 
+    # connect to the socket 
     clientSocket = Socket()
     clientSocket.connect()
-
+    drawDice = DiceButton(win_width / 2 + boardSize - diceImaages[0].get_width(),
+                            win_height / 2 - diceImaages[0].get_height(), diceImaages[0].get_width(), diceImaages[0].get_height())
     while running:
-        # window.fill((255,255,255))
+  
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 pygame.quit()
+
+            drawDice.handle_event(event) # Check if the dice button is pressed
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
@@ -171,39 +226,64 @@ def main():
                     clientSocket.send("join")
                     # if the "connected" message from te client is in the response, proceed to game state 1
                     game_state = 1
-       
-        # window.fill((255,255,255))
-        window.blit(bg, (0, 0))
+                elif game_state == 2 and check_button_click(mouse_pos, start_button):
+                    clientSocket.send("start")
+                    game_state = 3
+                    window.blit(board, (0, 0))
+                elif game_state == 3 and check_button_click(mouse_pos, dice_button):
+                        dice_button.roll_dice()
 
         # ready to join
         if game_state == 0:
+            window.blit(bg, (0, 0))
             join_button.draw()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_pos = pygame.mouse.get_pos()
+                    if check_button_click(mouse_pos, join_button):
+                        # Signal Server to join the game
+                        clientSocket.send("join")
+                        # if the "connected" message from the client is in the response, proceed to game state 1
+                        clientSocket.send("status")
+                        game_state = 1
 
         # joined, waiting for others
         elif game_state == 1:
+            window.blit(bg, (0, 0))
             join_text.draw(window)
+
+            # Check if all the players have joined and if the gme is ready to start
+            clientSocket.send("status")
+            #if "ready to start" in response:
+            game_state = 2
 
         # Ready to start
         elif game_state == 2:
+            window.blit(bg, (0, 0))
             ready_text.draw(window)
             start_button.draw()
 
         # in game
         elif game_state == 3:
-            draw_grid()
-            p.draw(window)
-            time.sleep(1)         # added sleep to test how far piece will go with each move
-            p.move(1)             # move should be able to take number of blocks to go forward
-            redrawWindow(window, p, game_state)
+            window.blit(board, (0, 0))
+            drawDice.draw_dice()
+            for p in player:
+                p.draw(window)
+                time.sleep(1)         # added sleep to test how far piece will go with each move
+                p.move(1)             # move should be able to take number of blocks to go forward
+            redrawWindow(window, player, drawDice, game_state)
 
         # win screen
         elif game_state == 4:
+            window.blit(bg, (0, 0))
             win_text.draw(window)
         
         # lose screen
         elif game_state == 5:
+            window.blit(bg, (0, 0))
             lose_text.draw(window)
-
+        
         pygame.display.update()
 
 main()
