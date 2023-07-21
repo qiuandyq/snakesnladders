@@ -26,6 +26,7 @@ clientNumber = 0
 
 
 class Player():
+    # TODO: change color based on the colour argument
     def __init__(self, x: object, y: object, width: object, height: object, colour: object) -> object:
         self.x = x
         self.y = y
@@ -58,6 +59,7 @@ class Player():
             else:
                 self.y += 1
 
+    # TODO: another move function for snakes and ladders
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -96,12 +98,12 @@ def draw_grid():
             pygame.draw.rect(bg, (0, 0, 0), (x, y, cell_size, cell_size), 1)
 
 
-def redrawWindow(window, player, game_state):
-    window.blit(bg, (0, 0))
-    # if game_state == 1:
-    # draw_grid()
-    # player.draw(window)
-    pygame.display.update()
+# def redrawWindow(window, player, game_state):
+#     window.blit(bg, (0, 0))
+#     if game_state == 1:
+#     draw_grid()
+#     player.draw(window)
+#     pygame.display.update()
 
 
 def main():
@@ -109,6 +111,8 @@ def main():
     running = True
     game_state = 0   # game state for display
 
+    # TODO: Get assgined colour from server
+    # TODO: New class for dice
     p = Player(0, 0, 25, 50, (255, 0, 0))
     join_button = Button(win_width // 2 - 50, win_height // 2 - 20, 100, 40, "Join")
     join_text = Text("Joined. Waiting for other players to join.", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
@@ -128,7 +132,7 @@ def main():
                 mouse_pos = pygame.mouse.get_pos()
                 if game_state == 0 and check_button_click(mouse_pos, join_button):
                     # TODO: Signal Server
-                    # TODO: proceed to game state 1, 2, 3, 4, 5
+                    # TODO: Logic to proceed to game state 1, 2, 3, 4, 5
                     game_state = 1
         
         # window.fill((255,255,255))
@@ -148,6 +152,11 @@ def main():
             start_button.draw()
 
         # in game
+        # TODO: Display other Player
+        # TODO: Inicator of own color
+        # TODO: Indicator of whose turn it is right now
+        # TODO: Display Dice and its status (can roll/can't roll)
+        # TODO: Logic to update movement based on msg from server
         elif game_state == 3:
             draw_grid()
             p.draw(window)
