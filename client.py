@@ -36,6 +36,7 @@ class Socket:
         self.message_queue = queue.Queue()  # Create a queue for received messages
         self.client_id_lock = threading.Lock()  # Create a lock for client_id
         self.running = True
+        self.buffer = ""
 
     def connect(self):
         try:
@@ -49,16 +50,25 @@ class Socket:
         self.client.settimeout(0.1)  # Set a timeout of 0.1 seconds for receiving data
         try:
             data = self.client.recv(1024).decode()
+            if not data:
+                return None
+
+            self.buffer += data
+            messages = self.buffer.split("\n")
+            self.buffer = messages[-1]  # Save any incomplete message to be handled later
+            messages = messages[:-1]  # Remove the incomplete message from the list
+
+            return messages
         except socket.timeout:
-            data = None
-        return data
+            return None
     
     def receive_messages(self):
         while self.running:  # Add a flag to control the loop
-            data = self.receive()
-            if data is not None:
-                self.message_queue.put(data)
-                print(f"Received: {data}")
+            messages = self.receive()
+            if messages:
+                for message in messages:
+                    self.message_queue.put(message)
+                    print(f"Received: {message}")
 
     def send(self, data):
         try:
@@ -138,9 +148,9 @@ if __name__ == "__main__":
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = pygame.mouse.get_pos()
                     if game_state == 1 and check_button_click(mouse_pos, start_button):
-                        # TODO: Signal Server
                         # TODO: Logic to proceed to game state 1, 2, 3, 4, 5
                         game_state = 2
+                        # TODO: Signal Server
 
             while not socket_client.message_queue.empty():
                 data = socket_client.message_queue.get()
