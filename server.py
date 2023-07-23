@@ -60,8 +60,8 @@ def compute_path(client_id, code):
 #   address: address of the client
 def game_thread(server, connection, address):
     global turn_order_current
-    print(f"Game thread {address} has started")
-    print(f"Turn order: {turn_order}")
+    print(f"Game thread {address} has started\n")
+    print(f"Turn order: {turn_order}\n")
 
     while True:
         code = (connection.recv(1024)).decode()
@@ -72,8 +72,8 @@ def game_thread(server, connection, address):
             path = compute_path(turn_order_current, code)
             if path[-1] == 100:
                 for (con, _, _) in clients:
-                    con.send(bytes(f"path {turn_order[turn_order_current]} {path}", "utf-8"))
-                    con.send(bytes(f"winner {turn_order[turn_order_current]}", "utf-8"))
+                    con.send(bytes(f"path {turn_order[turn_order_current]} {path}\n", "utf-8"))
+                    con.send(bytes(f"winner {turn_order[turn_order_current]}\n", "utf-8"))
                 game_end = True
                 break
             
@@ -84,8 +84,8 @@ def game_thread(server, connection, address):
 
             # sends the path of the player to all clients and the turn of the next client
             for (con, _, _) in clients:
-                con.send(bytes(f"path {turn_order[turn_order_current - 1]} {path}", "utf-8"))
-                con.send(bytes(f"turn {turn_order[turn_order_current]}", "utf-8"))
+                con.send(bytes(f"path {turn_order[turn_order_current - 1]} {path}\n", "utf-8"))
+                con.send(bytes(f"turn {turn_order[turn_order_current]}\n", "utf-8"))
 
 # Handles the connection of the client
 #
@@ -98,12 +98,12 @@ def client_thread(server, connection, address):
     print(f"New client connected {connection} with address {address}")
 
     # Send $id to the client
-    connection.send(bytes(f"your id is {client_count - 1}", "utf-8"))
+    connection.send(bytes(f"your id is {client_count - 1}\n", "utf-8"))
 
     # Notify all other clients that new client just connected
     for (con, addr, _) in clients:
         if addr != address:
-            con.send(bytes(f"connected {client_count - 1}", "utf-8"))
+            con.send(bytes(f"connected {client_count - 1}\n", "utf-8"))
 
     while True:
         # Listen to get the code
@@ -114,12 +114,12 @@ def client_thread(server, connection, address):
                 # establishes the turn order before game start
                 turn_order = establish_turn_order()
                 for (con, addr, _) in clients:
-                    con.send(bytes("start 1", "utf-8"))
-                    con.send(bytes(f"turn {turn_order[turn_order_current]}", "utf-8"))
+                    con.send(bytes("start 1\n", "utf-8"))
+                    con.send(bytes(f"turn {turn_order[turn_order_current]}\n", "utf-8"))
                     threading._start_new_thread(game_thread, (server, con, addr))
             else:
                 for (con, _, _) in clients:
-                    con.send(bytes("start 0", "utf-8"))
+                    con.send(bytes("start 0\n", "utf-8"))
 
 
 def main():
@@ -164,7 +164,7 @@ def main():
         # If the required client count has been reached for the first time, notify the clients
         if client_count >= MIN_CLIENT_COUNT and first_flag:
             for (con, _, _) in clients:
-                con.send(bytes("ready to start", "utf-8"))
+                con.send(bytes("ready to start\n", "utf-8"))
             first_flag = False
 
 
