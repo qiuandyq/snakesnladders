@@ -3,6 +3,12 @@ import select
 import pygame
 import socket
 import random 
+import argparse
+import threading
+import queue
+
+client_id = None
+client_count = 0
 
 win_width = 1200
 win_height = 700
@@ -19,6 +25,7 @@ pygame.display.set_caption("Client")
 
 bg = pygame.Surface((win_width, win_height))
 bg.fill((255, 255, 255))
+
 board = pygame.image.load('BoardImage.png')
 diceImaages = [pygame.image.load("dice1.png"), pygame.image.load("dice2.png"), pygame.image.load("dice3.png"),
                pygame.image.load("dice4.png"), pygame.image.load("dice5.png"), pygame.image.load("dice6.png")]
@@ -32,41 +39,60 @@ yellow = pygame.transform.scale(pygame.image.load('yellow.png'), (40, 40))
 clientNumber = 0
 
 class Socket:
-    def __init__(self):
+    def __init__(self, host, port):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = "127.0.0.1"
-        self.port = 8888
-        self.address = (self.server, self.port)
-        host, port = self.client.getsockname()
-        print(f"port {port}\n")
-        print(f"host {host}\n")
-        self.client.setblocking(False)
+        self.host = host
+        self.port = port
+        self.address = (self.host, self.port)
+        self.connected = False
+        self.message_queue = queue.Queue()  # Create a queue for received messages
+        self.client_id_lock = threading.Lock()  # Create a lock for client_id
+        self.running = True
+        self.buffer = ""
 
     def connect(self):
         try:
             self.client.connect(self.address)
             self.connected = True
         
-        except Exception as e:
+        except socket.error as e:
             print("Connectio error: ", e)
             self.connected = False
-    
-    def getData(self):
-        return self.data
+
+    def receive(self):
+        self.client.settimeout(0.1)  # Set a timeout of 0.1 seconds for receiving data
+        try:
+            data = self.client.recv(1024).decode()
+            if not data:
+                return None
+
+            self.buffer += data
+            messages = self.buffer.split("\n")
+            self.buffer = messages[-1]  # Save any incomplete message to be handled later
+            messages = messages[:-1]  # Remove the incomplete message from the list
+
+            return messages
+        except socket.timeout:
+            return None
+
+    def receive_messages(self):
+        while self.running:  # Add a flag to control the loop
+            messages = self.receive()
+            if messages:
+                for message in messages:
+                    self.message_queue.put(message)
+                    print(f"Received: {message}")
 
     def send(self, data):
         try:
             self.client.sendall(str.encode(data))
-            response = self.client.recv(4096).decode()
-            return response
-
         except socket.error as e:
             print("Socket error: ", e)
-            return None
     
     def close(self):
         self.client.close()
         self.connected = False
+        self.running = False
 
 class Player():
     def __init__(self, x, y, width, height, colour):
@@ -110,6 +136,8 @@ class Player():
                 self.x -= size
             else:
                 self.y += 1
+        
+        self.calculate_screen_position() # Calculate the screen posotion for each player after each move
 
 class DiceButton:
     def __init__(self, x, y, width, height):
@@ -124,7 +152,7 @@ class DiceButton:
 
     def roll_dice(self):
         self.current_dice = random.randint(1, 6)
-        self.draw_dice()
+        self.draw_dice() 
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -186,15 +214,27 @@ def redrawWindow(window, players, dice, game_state):
         player.draw(window)
 
     dice.draw_dice()
+
     pygame.display.update()
 
+running = True
 
-def main():
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Snakes and Ladders Client")
+    parser.add_argument("-host", action="store", help="Host IP")
+    parser.add_argument("-port", action="store", help="Host TCP Port", type=int)
+    args = parser.parse_args()
 
-    running = True
+    if args.host is None or args.port is None:
+        print("Please provide both host address and port.")
+
+    socket_client = Socket(args.host, args.port)
+    socket_client.connect()
+
     game_state = 0   # game state for display
 
-    player = [Player(0, 0, 250, 50, yellow), Player(0, 0, 200, 50, green)]
+    player1 = Player(0, 0, 250, 50, yellow)
+    player2 = Player(0, 0, 200, 50, green)
 
     dice_button = DiceButton(win_width / 2 + boardSize - diceImaages[0].get_width(),
                             win_height / 2 - diceImaages[0].get_height(), diceImaages[0].get_width(), diceImaages[0].get_height())
@@ -205,85 +245,131 @@ def main():
     win_text = Text("You won!", (win_width // 2, win_height // 2 - 100), (0, 255, 0))
     lose_text = Text("You lose", (win_width // 2, win_height // 2 - 100), (255, 0, 0))
 
-    # connect to the socket 
-    clientSocket = Socket()
-    clientSocket.connect()
     drawDice = DiceButton(win_width / 2 + boardSize - diceImaages[0].get_width(),
                             win_height / 2 - diceImaages[0].get_height(), diceImaages[0].get_width(), diceImaages[0].get_height())
-    while running:
-  
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                pygame.quit()
 
-            drawDice.handle_event(event) # Check if the dice button is pressed
+    message_thread = threading.Thread(target=socket_client.receive_messages)
+    message_thread.daemon = True
+    message_thread.start()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                if game_state == 0 and check_button_click(mouse_pos, join_button):
-                    # Signal Server to join the game
-                    clientSocket.send("join")
-                    # if the "connected" message from te client is in the response, proceed to game state 1
-                    game_state = 1
-                elif game_state == 2 and check_button_click(mouse_pos, start_button):
-                    clientSocket.send("start")
-                    game_state = 3
-                    window.blit(board, (0, 0))
-                elif game_state == 3 and check_button_click(mouse_pos, dice_button):
-                        dice_button.roll_dice()
+    client_id_lock = threading.Lock()
 
-        # ready to join
-        if game_state == 0:
-            window.blit(bg, (0, 0))
-            join_button.draw()
-            
+    currentPlayer = 1 
+
+    try:
+        while running:
+    
             for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    pygame.quit()
+
+                drawDice.handle_event(event)
+
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = pygame.mouse.get_pos()
-                    if check_button_click(mouse_pos, join_button):
+                    if game_state == 0 and check_button_click(mouse_pos, join_button):
                         # Signal Server to join the game
-                        clientSocket.send("join")
-                        # if the "connected" message from the client is in the response, proceed to game state 1
-                        clientSocket.send("status")
+                        socket_client.send("join")
+                        # if the "connected" message from te client is in the response, proceed to game state 1
                         game_state = 1
+                    elif game_state == 2 and check_button_click(mouse_pos, start_button):
+                        socket_client.send("start")
+                        game_state = 3
+                        window.blit(board, (0, 0))
+                    elif game_state == 3 and check_button_click(mouse_pos, dice_button):
+                            dice_button.roll_dice()
 
-        # joined, waiting for others
-        elif game_state == 1:
+
+            while not socket_client.message_queue.empty():
+                data = socket_client.message_queue.get()
+                # Process the received data here (e.g., check for "your id is ", "ready to start", etc.)
+                if data is not None:
+                    if data.startswith("your id is "):
+                        with socket_client.client_id_lock:  # Use the lock to protect client_id
+                            client_id = int(data.split()[3])
+                            client_count += 1
+                            print(f"Connected to the server. Your player ID is: {client_id}")
+                    elif data == "ready to start":
+                        print(f"Received: {data}\n")
+                        game_state = 1
+                    elif data.startswith("connected "):
+                        client_count = int(data.split()[1]) + 1
+                        print(f"{client_count} players joined.")
+
             window.blit(bg, (0, 0))
-            join_text.draw(window)
 
-            # Check if all the players have joined and if the gme is ready to start
-            clientSocket.send("status")
-            #if "ready to start" in response:
-            game_state = 2
+            # ready to join
+            if game_state == 0:
+                window.blit(bg, (0, 0))
+                join_button.draw()
+                
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        mouse_pos = pygame.mouse.get_pos()
+                        if check_button_click(mouse_pos, join_button):
+                            # Signal Server to join the game
+                            socket_client.send("join")
+                            # if the "connected" message from the client is in the response, proceed to game state 1
+                            socket_client.send("status")
+                            game_state = 1
 
-        # Ready to start
-        elif game_state == 2:
-            window.blit(bg, (0, 0))
-            ready_text.draw(window)
-            start_button.draw()
+            # joined, waiting for others
+            elif game_state == 1:
+                window.blit(bg, (0, 0))
+                join_text.draw(window)
 
-        # in game
-        elif game_state == 3:
-            window.blit(board, (0, 0))
-            drawDice.draw_dice()
-            for p in player:
-                p.draw(window)
-                time.sleep(1)         # added sleep to test how far piece will go with each move
-                p.move(1)             # move should be able to take number of blocks to go forward
-            redrawWindow(window, player, drawDice, game_state)
+                # Check if all the players have joined and if the gme is ready to start
+                socket_client.send("status")
+                #if "ready to start" in response:
+                game_state = 2
 
-        # win screen
-        elif game_state == 4:
-            window.blit(bg, (0, 0))
-            win_text.draw(window)
-        
-        # lose screen
-        elif game_state == 5:
-            window.blit(bg, (0, 0))
-            lose_text.draw(window)
-        
-        pygame.display.update()
+            # Ready to start
+            elif game_state == 2:
+                window.blit(bg, (0, 0))
+                ready_text.draw(window)
+                start_button.draw()
 
-main()
+            # in game
+            elif game_state == 3:
+                window.blit(board, (0, 0))
+                drawDice.draw_dice()
+                
+                if currentPlayer == 1 and check_button_click(mouse_pos, dice_button):
+                    dice_value = dice_button.current_dice
+                    # moving Player 1 
+                    if player1.x + player1.y < 100:
+                        for _ in range(dice_value):
+                            player1.move(1)    
+                            redrawWindow(window, [player1, player2], drawDice, game_state)
+                            pygame.time.delay(100) # move should be able to take number of blocks to go forward
+
+                    if player2.x + player2.y < 100:
+                        for _ in range(dice_value):
+                            player2.move(1)    
+                            redrawWindow(window, [player1, player2], drawDice, game_state)
+                            pygame.time.delay(100) # move should be able to take number of blocks to go forward
+
+                    # Check for which player wins 
+                    if player1.x + player1.y >= 100:
+                        game_state = 4
+                    elif player2.x + player2.y >= 100:
+                        game_state = 5
+
+                redrawWindow(window, [player1, player2], drawDice, game_state)
+
+            # win screen
+            elif game_state == 4:
+                window.blit(bg, (0, 0))
+                win_text.draw(window)
+            
+            # lose screen
+            elif game_state == 5:
+                window.blit(bg, (0, 0))
+                lose_text.draw(window)
+            
+            pygame.display.update()
+
+    finally:
+        socket_client.close()
+
