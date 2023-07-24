@@ -155,9 +155,18 @@ def main():
         if client_count < MAX_CLIENT_COUNT:
             # Accept the connection and modify global client data
             connection, address = server.accept()
+            
             client_count += 1
+            
             # client array should include connection, address, and position
             clients.append([connection, address, 0])
+            
+            for (i, (_, _, _)) in enumerate(clients[:-1]):
+                connection.send(bytes(f"connected {i}\n", "utf-8"))
+            
+            if not first_flag:
+                connection.send(bytes(f"ready to start\n", "utf-8"))
+            
 
             # Start the thread for the client handling
             threading._start_new_thread(client_thread, (server, connection, address))
