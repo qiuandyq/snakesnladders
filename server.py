@@ -3,6 +3,7 @@ import socket
 import time
 import random
 import argparse
+# python3 server.py -host localhost -port 8088
 
 MIN_CLIENT_COUNT = 2
 MAX_CLIENT_COUNT = 4
