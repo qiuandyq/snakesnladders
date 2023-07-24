@@ -1,9 +1,9 @@
-# python3 server.py -host localhost -port 8088
 import threading
 import socket
 import time
 import random
 import argparse
+# python3 server.py -host localhost -port 8088
 
 MIN_CLIENT_COUNT = 2
 MAX_CLIENT_COUNT = 4
@@ -32,6 +32,7 @@ def establish_turn_order():
 def compute_path(client_id, code):
     global clients
     dice_num = int(code.split()[1])
+    print(f"Received: {code}")
     path = []
 
     # increments the position and updates the path
