@@ -32,6 +32,7 @@ def establish_turn_order():
 def compute_path(client_id, code):
     global clients
     dice_num = int(code.split()[1])
+    print(f"Received: {code}")
     path = []
 
     # increments the position and updates the path
