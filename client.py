@@ -52,7 +52,7 @@ class Socket:
         self.address = (self.host, self.port)
         self.connected = False
         self.message_queue = queue.Queue()  # Create a queue for received messages
-        self.client_id_lock = threading.Lock()  # Create a lock for client_id
+        # self.client_id_lock = threading.Lock()  # Create a lock for client_id
         self.running = True
         self.buffer = ""
 
@@ -103,7 +103,7 @@ class Socket:
         self.running = False
 
     def is_my_turn(self, turn_current):
-        with self.client_id_lock:
+        # with self.client_id_lock:
             return client_id == turn_current
 
 
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     message_thread.daemon = True
     message_thread.start()
 
-    client_id_lock = threading.Lock()
+    # client_id_lock = threading.Lock()
 
     try:
         while True:
@@ -295,7 +295,7 @@ if __name__ == "__main__":
                 # Process the received data here (e.g., check for "your id is ", "ready to start", etc.)
                 if data is not None:
                     if data.startswith("your id is "):
-                        with socket_client.client_id_lock:  # Use the lock to protect client_id
+                        # with socket_client.client_id_lock:  # Use the lock to protect client_id
                             client_id = int(data.split()[3])
                             client_count = client_id + 1
                             print(
