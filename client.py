@@ -31,8 +31,12 @@ pygame.init()
 window = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Snakes and Ladders")
 
-bg = pygame.Surface((win_width, win_height))
-bg.fill((255, 255, 255))
+bg = pygame.image.load('BoardImage.png')
+bg = pygame.transform.scale(bg, (win_width, win_height))
+
+
+#bg = pygame.Surface((win_width, win_height))
+#bg.fill((255, 255, 255))
 
 red = pygame.transform.scale(
     pygame.image.load('assets/Player_red.png'), (14, 14))
@@ -208,6 +212,9 @@ class DiceButton(Button):
 
         window.blit(dice_image, self.rect.topleft)
 
+        if self.clickable:
+            pygame.draw.rect(window, (255, 255, 0), self.rect, 2)   #highlights dice to show clickable
+
     def roll(self):
         if self.clickable:
             roll_result = random.randint(1, 6)
@@ -355,6 +362,7 @@ if __name__ == "__main__":
                 else:
                     moving_player = None
                     if turn_current == client_id:
+
                         dice_button.set_clickable(True)
                     else:
                         dice_button.set_clickable(False)
