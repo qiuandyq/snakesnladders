@@ -31,8 +31,12 @@ pygame.init()
 window = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Snakes and Ladders")
 
-bg = pygame.Surface((win_width, win_height))
-bg.fill((255, 255, 255))
+bg = pygame.image.load('BoardImage.png')
+bg = pygame.transform.scale(bg, (win_width, win_height))
+
+
+#bg = pygame.Surface((win_width, win_height))
+#bg.fill((255, 255, 255))
 
 red = pygame.transform.scale(
     pygame.image.load('assets/Player_red.png'), (14, 14))
@@ -155,8 +159,18 @@ class Text:
     def draw(self, window):
         text_surface = self.font.render(self.text, True, self.color)
         text_rect = text_surface.get_rect(center=self.position)
+
+        background_rect = text_rect.inflate(5, 5)
+        pygame.draw.rect(window, (255, 255, 255),background_rect)
+
         window.blit(text_surface, text_rect)
 
+    def draw_large_text(self, window):          #should make this different from normal text draw i think?
+        font = pygame.font.Font(None, self.font_size)
+        text_surface = font.render(self.text, True, self.color)
+        text_rect = text_surface.get_rect(center=self.position)
+
+        window.blit(text_surface, text_rect)
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -181,6 +195,8 @@ class Button:
 
 
 class DiceButton(Button):
+
+
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
 
@@ -207,6 +223,9 @@ class DiceButton(Button):
             dice_image = self.dice_disabled_image
 
         window.blit(dice_image, self.rect.topleft)
+
+        if self.clickable:
+            pygame.draw.rect(window, (255, 255, 0), self.rect, 2)   #highlights dice to show clickable
 
     def roll(self):
         if self.clickable:
@@ -241,8 +260,10 @@ if __name__ == "__main__":
     game_state = 0
     moving_player = None
     moves = []
-
+    roll_result = 0
     # inialize game objects
+    # Add text on board saying "Player rolled a _"
+
     join_text = Text("Joined. Waiting for other players to join.",
                      (win_width // 2, win_height // 2 - 100), (0, 0, 0))
     ready_text = Text("Players joined. Ready to start.",
@@ -286,7 +307,9 @@ if __name__ == "__main__":
                     socket_client.send("start")
 
                 elif game_state == 2 and dice_button.clickable is True and dice_button.check_button_click(event):
-                    socket_client.send(f"dice {dice_button.roll()}")
+                    roll = dice_button.roll()
+                    socket_client.send(f"dice {roll}")
+                    roll_result = roll
                     print("dice message sent")
 
             # TODO: Move this block to the Socket Class maybe
@@ -345,6 +368,9 @@ if __name__ == "__main__":
             elif game_state == 2:
                 draw_grid()
                 dice_button.draw()
+                rolled_text = Text(f'Rolled a {roll_result}',
+                                   (win_width // 1 - 55, win_height - 80), (0, 0, 0))
+                rolled_text.draw_large_text(window)                                 #displays dice rolled, but takes a second click to show actual roll (first one is false)
 
                 if moves:
                     dice_button.set_clickable(False)
@@ -355,6 +381,7 @@ if __name__ == "__main__":
                 else:
                     moving_player = None
                     if turn_current == client_id:
+
                         dice_button.set_clickable(True)
                     else:
                         dice_button.set_clickable(False)
@@ -366,6 +393,7 @@ if __name__ == "__main__":
             elif game_state == 3:
                 window.blit(bg, (0, 0))
                 win_text.draw(window)
+
 
             # lose screen
             elif game_state == 4:
