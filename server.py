@@ -18,14 +18,6 @@ snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75,
 ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
 dice_holder = -1
 
-# Establishes the turn order for the game by randomizing client id
-def establish_turn_order():
-    order = []
-    for i in range(len(clients)):
-        order.append(i)
-    random.shuffle(order)
-    return order
-
 # Computes the path of the player based on dice roll
 #
 # Params:
@@ -67,6 +59,7 @@ def game_thread(server, connection, address):
     while True:
         code = (connection.recv(1024)).decode()
 
+        # when the client rolls the dice, execute the game logic
         if "dice" in code:
             if dice_holder != addr_to_cid[address]:
                 connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
@@ -87,6 +80,9 @@ def game_thread(server, connection, address):
                     dice_holder = -1
                     con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
+        # first come first serve logic for taking the dice
+        # if the dice is not being held, the client can take the dice
+        # if the dice is being held, the client will be sent an error
         if code == "take":
             if dice_holder == -1:
                 dice_holder = addr_to_cid[address]
@@ -162,6 +158,7 @@ def main():
             connection, address = server.accept()
             
             client_count += 1
+            # maps address to client id
             addr_to_cid[address] = client_count - 1
             
             # client array should include connection, address, and position
