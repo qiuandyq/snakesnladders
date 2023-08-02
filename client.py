@@ -197,7 +197,6 @@ class Button:
 
 class DiceButton(Button):
 
-
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
 
@@ -309,12 +308,14 @@ if __name__ == "__main__":
 
                 elif game_state == 2 and dice_button.clickable is True and dice_taken is False and dice_button.check_button_click(event):
 
-                    if dice_taken == False:
-                        socket_client.send("take")                                                              # client sends "take" to server
-                        roll = dice_button.roll()
-                        socket_client.send(f"dice {roll}")
-                        roll_result = roll
-                        print("dice message sent")
+                    socket_client.send("take")  # client sends "take" to server
+                    roll = dice_button.roll()
+                    socket_client.send(f"dice {roll}")
+                    roll_result = roll
+                    print("dice message sent")
+
+                    # always seem to send dice, which triggers error message 1. Will only take if it's just take...
+
 
             # TODO: Move this block to the Socket Class maybe
             while not socket_client.message_queue.empty():
@@ -335,14 +336,7 @@ if __name__ == "__main__":
                     elif data == "start 1":
                         game_state = 2
                         print(f"Game Started.")
-                    elif data.startswith("turn "):
-                        turn_current = int(data.split()[1])
-                        if socket_client.is_my_turn(turn_current):
-                            game_state = 3                        #--------------------------- should just start with my turn
-                            print(f"It's my turn.")
-                        else:
-                            print(f"It's player {turn_current}'s turn.")
-                    elif data.startswith("take "):                  #---------------------------recently added
+                    elif data.startswith("take "):  # ---------------------------recently added
                         dice_holder = int(data.split()[1])
                         print(f"Player {dice_holder} is holding the dice.")
                         dice_taken = False  # Set the flag to False as the dice roll is taken
@@ -351,12 +345,12 @@ if __name__ == "__main__":
                         game_state = 2
                         data_parts = data.split()
                         moving_player = int(data_parts[1])
-                        moves_str = data[data.find("[")+1:data.find("]")]
+                        moves_str = data[data.find("[") + 1:data.find("]")]
                         moves = [int(move) for move in moves_str.split(",")]
                         print(
                             f"Received path for player {moving_player}: {moves}")
 
-                    # TODO: Get win and lost msgs from server and decode
+                        # TODO: Get win and lost msgs from server and decode
                     else:
                         pass
 
@@ -381,20 +375,17 @@ if __name__ == "__main__":
                 rolled_text.draw_large_text(window)                                 #displays dice rolled, but takes a second click to show actual roll (first one is false)
 
                 dice_button.set_clickable(True)                                     #set dice button always clickable
-                if moves:
+                if not dice_taken and moves:
                     #dice_button.set_clickable(False)
                     # Remove the first element from the list
                     move = moves.pop(0)
                     players[moving_player].move(move)
                     time.sleep(1)
                     dice_taken = True
-                else:                                                               # maybe the player doesnt change w/ turn, so its always same player??
+                elif not moves:                                                               # maybe the player doesnt change w/ turn, so its always same player??
                     moving_player = None
-                    if turn_current == client_id:
-                        dice_button.set_clickable(True)
-                        dice_taken = False
-                    else:
-                        dice_button.set_clickable(False)
+                    dice_button.set_clickable(True)                                                            # previous turn_current == client_id
+                    dice_taken = False
 
                 for i in range(0, client_count):
                     players[i].draw(window)

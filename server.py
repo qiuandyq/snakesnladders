@@ -12,12 +12,9 @@ client_count = 0
 clients = []
 addr_to_cid = {}
 game_end = False
-turn_order = []
-turn_order_current = 0
 snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
 ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
-dice_holder = 1         #set dice_holder = 1 to start
-
+dice_holder = 1
 
 # Computes the path of the player based on dice roll
 #
@@ -54,7 +51,7 @@ def compute_path(client_id, code):
 #   connection: connection socket
 #   address: address of the client
 def game_thread(server, connection, address):
-    global turn_order_current, dice_holder
+    global dice_holder
     print(f"Game thread {address} has started\n")
 
     while True:
@@ -63,11 +60,12 @@ def game_thread(server, connection, address):
         # when the client rolls the dice, execute the game logic
         if "dice" in code:
             if dice_holder != addr_to_cid[address]:
+                print("Error Message 1, dice in code, dice_holder != addr_client " , dice_holder)
                 connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
             else:
                 # compute the path and send it to all clients
                 # if the client reaches 100, send winner packet to all clients
-                path = compute_path(turn_order_current, code)
+                path = compute_path(dice_holder, code)
                 if path[-1] == 100:
                     for (con, _, _) in clients:
                         con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
@@ -78,7 +76,7 @@ def game_thread(server, connection, address):
                 # sends the path of the player to all clients and the resets dice_holder to notify dice is up for grabs
                 for (con, _, _) in clients:
                     con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
-                    dice_holder = 1                         #set dice back to 1 here
+                    dice_holder = -1
                     con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
         # first come first serve logic for taking the dice
@@ -90,8 +88,8 @@ def game_thread(server, connection, address):
                 print(addr_to_cid[address])
                 for (con, _, _) in clients:
                     con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
-
             else:
+                print("Error message 2, take in code, dice_holder != -1")
                 connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
 
 # Handles the connection of the client
@@ -101,7 +99,6 @@ def game_thread(server, connection, address):
 #   connection: connection socket
 #   address: address of the client
 def client_thread(server, connection, address):
-    global turn_order
     print(f"New client connected {connection} with address {address}")
 
     # Send $id to the client
