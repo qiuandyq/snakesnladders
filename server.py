@@ -14,7 +14,7 @@ addr_to_cid = {}
 game_end = False
 snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
 ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
-dice_holder = 1
+dice_holder = -1
 
 # Computes the path of the player based on dice roll
 #
@@ -56,6 +56,19 @@ def game_thread(server, connection, address):
 
     while True:
         code = (connection.recv(1024)).decode()
+        print(f"Received: {code}")
+
+        # first come first serve logic for taking the dice
+        # if the dice is not being held, the client can take the dice
+        # if the dice is being held, the client will be sent an error
+        if code == "take":
+            if dice_holder == -1:
+                dice_holder = addr_to_cid[address]
+                for (con, _, _) in clients:
+                    con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
+            else:
+                print("Error message 2, take in code, dice_holder != -1")
+                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
 
         # when the client rolls the dice, execute the game logic
         if "dice" in code:
@@ -79,18 +92,6 @@ def game_thread(server, connection, address):
                     dice_holder = -1
                     con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
-        # first come first serve logic for taking the dice
-        # if the dice is not being held, the client can take the dice
-        # if the dice is being held, the client will be sent an error
-        if code == "take":
-            if dice_holder == -1:
-                dice_holder = addr_to_cid[address]
-                print(addr_to_cid[address])
-                for (con, _, _) in clients:
-                    con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
-            else:
-                print("Error message 2, take in code, dice_holder != -1")
-                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
 
 # Handles the connection of the client
 #
