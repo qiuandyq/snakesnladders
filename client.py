@@ -51,6 +51,7 @@ yellow = pygame.transform.scale(
 class Socket:
     def __init__(self, host, port):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.host = host
         self.port = port
         self.address = (self.host, self.port)
@@ -399,7 +400,6 @@ if __name__ == "__main__":
                 else:
                     moving_player = None
                     game_state = 2
-                    socket_client.send("ready to take")
                     socket_client.send("ready to take")
                     # if turn_current == client_id:
                     #     dice_button.set_clickable(True)
