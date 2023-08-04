@@ -162,13 +162,18 @@ class Button:
     def __init__(self, x, y, width, height, text):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
+        self.clickable = True
 
     def draw(self):
-        pygame.draw.rect(window, (0, 0, 0), self.rect, 2)
+        color = (0, 0, 0) if self.clickable else (128, 128, 128)  # black if clickable, otherwise grey,
+        pygame.draw.rect(window, color, self.rect, 2)
         font = pygame.font.SysFont(None, 40)
-        text_render = font.render(self.text, True, (0, 0, 0))
+        text_render = font.render(self.text, True, color)
         text_rect = text_render.get_rect(center=self.rect.center)
         window.blit(text_render, text_rect)
+
+    def set_clickable(self, value):
+        self.clickable = value
 
     def check_button_click(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -197,9 +202,6 @@ class DiceButton(Button):
 
         self.clickable = False
 
-    def set_clickable(self, value):
-        self.clickable = value
-
     def draw(self):
         if self.clickable:
             dice_image = self.dice_clickable_image
@@ -216,6 +218,7 @@ class DiceButton(Button):
         else:
             # The button is disabled, do nothing when clicked
             pass
+    
 
 
 def draw_grid():
@@ -241,6 +244,7 @@ if __name__ == "__main__":
     game_state = 0
     moving_player = None
     moves = []
+    open_to_take = False
 
     # inialize game objects
     join_text = Text("Joined. Waiting for other players to join.",
@@ -249,6 +253,10 @@ if __name__ == "__main__":
                       (win_width // 2, win_height // 2 - 100), (0, 0, 0))
     start_button = Button(win_width // 2 - 50,
                           win_height // 2, 100, 40, "Start")
+    take_button = Button(win_width - grid_Xmargin,
+                          win_height // 2, 100, 40, "Take")
+    # take_button = DiceButton(win_width - grid_Xmargin,
+    #                         win_height - grid_Ymargin-50, 50, 50)
     dice_button = DiceButton(win_width - grid_Xmargin,
                              win_height - grid_Ymargin-50, 50, 50)
     win_text = Text("You won!", (win_width // 2,
@@ -282,12 +290,15 @@ if __name__ == "__main__":
                     pygame.quit()
 
                 if game_state == 1 and start_button.check_button_click(event):
-                    game_state = 2
                     socket_client.send("start")
 
-                elif game_state == 2 and dice_button.clickable is True and dice_button.check_button_click(event):
-                    socket_client.send(f"dice {dice_button.roll()}")
-                    print("dice message sent")
+                elif game_state == 2:
+                    if take_button.clickable is True and take_button.check_button_click(event):
+                        socket_client.send("take")
+                        print("take message sent")
+                    elif dice_button.clickable is True and dice_button.check_button_click(event):
+                        socket_client.send(f"dice {dice_button.roll()}")
+                        print("dice message sent")
 
             # TODO: Move this block to the Socket Class maybe
             while not socket_client.message_queue.empty():
@@ -309,21 +320,27 @@ if __name__ == "__main__":
                         game_state = 2
                         print(f"Game Started.")
                     elif data.startswith("turn "):
+                        take_button.set_clickable(False)
                         turn_current = int(data.split()[1])
                         if socket_client.is_my_turn(turn_current):
-                            # game_state = 3
+                            dice_button.set_clickable(True)
                             print(f"It's my turn.")
                         else:
+                            dice_button.set_clickable(False)
                             print(f"It's player {turn_current}'s turn.")
                     elif data.startswith("path "):
                         # Example format: "path 1 [1, 2]"
-                        game_state = 2
+                        game_state = 3
+                        dice_button.set_clickable(False)
+                        take_button.set_clickable(False)
                         data_parts = data.split()
                         moving_player = int(data_parts[1])
                         moves_str = data[data.find("[")+1:data.find("]")]
                         moves = [int(move) for move in moves_str.split(",")]
                         print(
                             f"Received path for player {moving_player}: {moves}")
+                    elif data == "dice is up for grabs":
+                        take_button.set_clickable(True)
 
                     # TODO: Get win and lost msgs from server and decode
                     else:
@@ -341,34 +358,46 @@ if __name__ == "__main__":
                 ready_text.draw(window)
                 start_button.draw()
 
-            # in game
+            # In game: Compete for take
             elif game_state == 2:
                 draw_grid()
+                take_button.draw()
+                dice_button.draw()
+
+                for i in range(0, client_count):
+                    players[i].draw(window)
+
+            # In game: Moving players
+            elif game_state == 3:
+                draw_grid()
+                take_button.draw()
                 dice_button.draw()
 
                 if moves:
-                    dice_button.set_clickable(False)
                     # Remove the first element from the list
                     move = moves.pop(0)
                     players[moving_player].move(move)
                     time.sleep(1)
                 else:
                     moving_player = None
-                    if turn_current == client_id:
-                        dice_button.set_clickable(True)
-                    else:
-                        dice_button.set_clickable(False)
+                    game_state = 2
+                    socket_client.send("ready to take")
+                    socket_client.send("ready to take")
+                    # if turn_current == client_id:
+                    #     dice_button.set_clickable(True)
+                    # else:
+                    #     dice_button.set_clickable(False)
 
                 for i in range(0, client_count):
                     players[i].draw(window)
-
+            
             # win screen
-            elif game_state == 3:
+            elif game_state == 4:
                 window.blit(bg, (0, 0))
                 win_text.draw(window)
 
             # lose screen
-            elif game_state == 4:
+            elif game_state == 5:
                 window.blit(bg, (0, 0))
                 lose_text.draw(window)
 
