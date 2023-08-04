@@ -24,7 +24,7 @@ dice_holder = -1
 def compute_path(client_id, code):
     global clients
     dice_num = int(code.split()[1])
-    print(f"Received: {code}")
+    # print(f"Received: {code}")
     path = []
 
     # increments the position and updates the path
@@ -56,7 +56,8 @@ def game_thread(server, connection, address):
 
     while True:
         code = (connection.recv(1024)).decode()
-        print(f"Received: {code}")
+        if code != None:
+            print(f"Received: {code}")
 
         # first come first serve logic for taking the dice
         # if the dice is not being held, the client can take the dice
@@ -86,11 +87,14 @@ def game_thread(server, connection, address):
                     game_end = True
                     break
 
-                # sends the path of the player to all clients and the resets dice_holder to notify dice is up for grabs
                 for (con, _, _) in clients:
                     con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
-                    dice_holder = -1
-                    con.send(bytes(f"dice is up for grabs\n", "utf-8"))
+
+        if code == "ready to take":
+            # sends the path of the player to all clients and the resets dice_holder to notify dice is up for grabs
+            for (con, _, _) in clients:
+                dice_holder = -1
+                con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
 
 # Handles the connection of the client
