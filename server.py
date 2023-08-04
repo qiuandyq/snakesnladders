@@ -56,10 +56,24 @@ def game_thread(server, connection, address):
 
     while True:
         code = (connection.recv(1024)).decode()
+        print(f"Received: {code}")
+
+        # first come first serve logic for taking the dice
+        # if the dice is not being held, the client can take the dice
+        # if the dice is being held, the client will be sent an error
+        if code == "take":
+            if dice_holder == -1:
+                dice_holder = addr_to_cid[address]
+                for (con, _, _) in clients:
+                    con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
+            else:
+                print("Error message 2, take in code, dice_holder != -1")
+                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
 
         # when the client rolls the dice, execute the game logic
         if "dice" in code:
             if dice_holder != addr_to_cid[address]:
+                print("Error Message 1, dice in code, dice_holder != addr_client " , dice_holder)
                 connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
             else:
                 # compute the path and send it to all clients
@@ -78,17 +92,6 @@ def game_thread(server, connection, address):
                     dice_holder = -1
                     con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
-        # first come first serve logic for taking the dice
-        # if the dice is not being held, the client can take the dice
-        # if the dice is being held, the client will be sent an error
-        if code == "take":
-            if dice_holder == -1:
-                dice_holder = addr_to_cid[address]
-                print(addr_to_cid[address])
-                for (con, _, _) in clients:
-                    con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
-            else:
-                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
 
 # Handles the connection of the client
 #
