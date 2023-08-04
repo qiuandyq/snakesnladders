@@ -16,6 +16,7 @@ not_started = True
 snakes = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
 ladders = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
 dice_holder = -1
+dice_lock = threading.Lock();
 
 # Computes the path of the player based on dice roll
 #
@@ -52,53 +53,58 @@ def compute_path(client_id, code):
 #   connection: connection socket
 #   address: address of the client
 def game_thread(server, connection, address):
-    global dice_holder, game_end
+    global dice_holder, game_end, dice_lock
     print(f"Game thread {address} has started\n")
 
     while True:
-        if game_end:
-            return
+        if not dice_lock.locked():
+            if game_end:
+                return
 
-        code = (connection.recv(1024)).decode()
-        if code != None:
-            print(f"Received: {code}")
+            code = (connection.recv(1024)).decode()
+            if code != None:
+                print(f"Received: {code}")
 
-        # first come first serve logic for taking the dice
-        # if the dice is not being held, the client can take the dice
-        # if the dice is being held, the client will be sent an error
-        if code == "take":
-            if dice_holder == -1:
-                dice_holder = addr_to_cid[address]
-                for (con, _, _) in clients:
-                    con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
-            else:
-                print("Error message 2, take in code, dice_holder != -1")
-                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
+            # first come first serve logic for taking the dice
+            # if the dice is not being held, the client can take the dice
+            # if the dice is being held, the client will be sent an error
+            if code == "take":
+                dice_lock.acquire()
+                try:
+                    if dice_holder == -1:
+                        dice_holder = addr_to_cid[address]
+                        for (con, _, _) in clients:
+                            con.send(bytes(f"turn {dice_holder}\n", "utf-8"))
+                    else:
+                        print("Error message 2, take in code, dice_holder != -1")
+                        connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
+                finally:
+                    dice_lock.release()
 
-        # when the client rolls the dice, execute the game logic
-        if "dice" in code:
-            if dice_holder != addr_to_cid[address]:
-                print("Error Message 1, dice in code, dice_holder != addr_client " , dice_holder)
-                connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
-            else:
-                # compute the path and send it to all clients
-                # if the client reaches 100, send winner packet to all clients
-                path = compute_path(dice_holder, code)
-                if path[-1] == 100:
+            # when the client rolls the dice, execute the game logic
+            if "dice" in code:
+                if dice_holder != addr_to_cid[address]:
+                    print("Error Message 1, dice in code, dice_holder != addr_client " , dice_holder)
+                    connection.send(bytes(f"ERROR: client {dice_holder} is currently holding the dice\n", "utf-8"))
+                else:
+                    # compute the path and send it to all clients
+                    # if the client reaches 100, send winner packet to all clients
+                    path = compute_path(dice_holder, code)
+                    if path[-1] == 100:
+                        for (con, _, _) in clients:
+                            con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
+                            con.send(bytes(f"winner {addr_to_cid[address]}\n", "utf-8"))
+                        game_end = True
+                        break
+
                     for (con, _, _) in clients:
                         con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
-                        con.send(bytes(f"winner {addr_to_cid[address]}\n", "utf-8"))
-                    game_end = True
-                    break
 
+            if "ready to take" in code:
+                # sends the path of the player to all clients and the resets dice_holder to notify dice is up for grabs
                 for (con, _, _) in clients:
-                    con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
-
-        if "ready to take" in code:
-            # sends the path of the player to all clients and the resets dice_holder to notify dice is up for grabs
-            for (con, _, _) in clients:
-                dice_holder = -1
-                con.send(bytes(f"dice is up for grabs\n", "utf-8"))
+                    dice_holder = -1
+                    con.send(bytes(f"dice is up for grabs\n", "utf-8"))
 
 
 # Handles the connection of the client
