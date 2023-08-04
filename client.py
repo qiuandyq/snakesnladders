@@ -31,8 +31,12 @@ pygame.init()
 window = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Snakes and Ladders")
 
-bg = pygame.Surface((win_width, win_height))
-bg.fill((255, 255, 255))
+bg = pygame.image.load('BoardImage.png')
+bg = pygame.transform.scale(bg, (win_width, win_height))
+
+
+#bg = pygame.Surface((win_width, win_height))
+#bg.fill((255, 255, 255))
 
 red = pygame.transform.scale(
     pygame.image.load('assets/Player_red.png'), (14, 14))
@@ -157,6 +161,13 @@ class Text:
         text_rect = text_surface.get_rect(center=self.position)
         window.blit(text_surface, text_rect)
 
+    def draw_large_text(self, window):
+        font = pygame.font.Font(None, self.font_size)
+        text_surface = font.render(self.text, True, self.color)
+        text_rect = text_surface.get_rect(center=self.position)
+
+        window.blit(text_surface, text_rect)
+
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -245,6 +256,7 @@ if __name__ == "__main__":
     moving_player = None
     moves = []
     open_to_take = False
+    roll_result = 0
 
     # inialize game objects
     join_text = Text("Joined. Waiting for other players to join.",
@@ -297,7 +309,9 @@ if __name__ == "__main__":
                         socket_client.send("take")
                         print("take message sent")
                     elif dice_button.clickable is True and dice_button.check_button_click(event):
-                        socket_client.send(f"dice {dice_button.roll()}")
+                        roll = dice_button.roll()
+                        socket_client.send(f"dice {roll}")
+                        roll_result = roll
                         print("dice message sent")
 
             # TODO: Move this block to the Socket Class maybe
@@ -363,6 +377,10 @@ if __name__ == "__main__":
                 draw_grid()
                 take_button.draw()
                 dice_button.draw()
+                rolled_text = Text(f'Rolled a {roll_result}',
+                                   (win_width // 1 - 55, win_height - 80), (0, 0, 0))
+                rolled_text.draw_large_text(window)
+
 
                 for i in range(0, client_count):
                     players[i].draw(window)
