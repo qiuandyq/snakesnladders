@@ -145,7 +145,7 @@ class Player():
             else:
                 self.x = 9
 
-        # Calculate the screen posotion for each player after each move
+        # Calculate the screen position for each player after each move
         self.calculate_screen_position()
 
 
@@ -163,7 +163,7 @@ class Text:
         window.blit(text_surface, text_rect)
 
     def draw_large_text(self, window):
-        font = pygame.font.Font(None, self.font_size)
+        font = pygame.font.Font(None, 35)
         text_surface = font.render(self.text, True, self.color)
         text_rect = text_surface.get_rect(center=self.position)
 
@@ -225,6 +225,7 @@ class DiceButton(Button):
     def roll(self):
         if self.clickable:
             roll_result = random.randint(1, 6)
+            #roll_result = 100
             print(f"Dice rolled: {roll_result}")
             return roll_result
         else:
@@ -258,6 +259,7 @@ if __name__ == "__main__":
     moves = []
     open_to_take = False
     roll_result = 0
+    winner_id = None
 
     # inialize game objects
     join_text = Text("Joined. Waiting for other players to join.",
@@ -268,12 +270,9 @@ if __name__ == "__main__":
                           win_height // 2, 100, 40, "Start")
     take_button = Button(win_width - grid_Xmargin,
                           win_height // 2, 100, 40, "Take")
-    # take_button = DiceButton(win_width - grid_Xmargin,
-    #                         win_height - grid_Ymargin-50, 50, 50)
     dice_button = DiceButton(win_width - grid_Xmargin,
                              win_height - grid_Ymargin-50, 50, 50)
-    win_text = Text("You won!", (win_width // 2,
-                    win_height // 2 - 100), (0, 255, 0))
+
     lose_text = Text("You lose", (win_width // 2,
                      win_height // 2 - 100), (255, 0, 0))
 
@@ -354,6 +353,10 @@ if __name__ == "__main__":
                         moves = [int(move) for move in moves_str.split(",")]
                         print(
                             f"Received path for player {moving_player}: {moves}")
+                    elif data.startswith("winner"):
+                        winner_id = int(data.split()[1])
+                        print(f"winner_id = {winner_id}")
+                        #game_state = 4
                     elif data == "dice is up for grabs":
                         take_button.set_clickable(True)
 
@@ -380,7 +383,7 @@ if __name__ == "__main__":
                 dice_button.draw()
                 rolled_text = Text(f'Rolled a {roll_result}',
                                    (win_width // 1 - 55, win_height - 80), (0, 0, 0))
-                rolled_text.draw_large_text(window)
+                rolled_text.draw(window)
 
 
                 for i in range(0, client_count):
@@ -388,6 +391,7 @@ if __name__ == "__main__":
 
             # In game: Moving players
             elif game_state == 3:
+
                 draw_grid()
                 take_button.draw()
                 dice_button.draw()
@@ -408,11 +412,15 @@ if __name__ == "__main__":
 
                 for i in range(0, client_count):
                     players[i].draw(window)
+
+                if winner_id != None:                       # thought it would move pieces before win screen :/
+                    game_state = 4
             
             # win screen
             elif game_state == 4:
+                win_text = Text(f"Player {winner_id} won!", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
                 window.blit(bg, (0, 0))
-                win_text.draw(window)
+                win_text.draw_large_text(window)
 
             # lose screen
             elif game_state == 5:

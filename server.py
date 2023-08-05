@@ -93,7 +93,9 @@ def game_thread(server, connection, address):
                     if path[-1] == 100:
                         for (con, _, _) in clients:
                             con.send(bytes(f"path {addr_to_cid[address]} {path}\n", "utf-8"))
-                            con.send(bytes(f"winner {addr_to_cid[address]}\n", "utf-8"))
+                            if dice_holder == addr_to_cid[address]:
+                                con.send(bytes(f"winner {addr_to_cid[address]}\n", "utf-8"))
+
                         game_end = True
                         break
 
