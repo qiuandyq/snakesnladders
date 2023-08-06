@@ -183,8 +183,7 @@ def main():
     first_flag = True
 
     while not game_end:
-
-        if client_count < MAX_CLIENT_COUNT:
+        if client_count < MAX_CLIENT_COUNT and not_started:
             print("New connection")
             # Accept the connection and modify global client data
             connection, address = server.accept()
@@ -212,6 +211,12 @@ def main():
             for (con, _, _) in clients:
                 con.send(bytes("ready to start\n", "utf-8"))
             first_flag = False
+        
+    
+    for (con, _, _) in clients:
+        con.close()
+    
+    server.close()
     return
 
 
