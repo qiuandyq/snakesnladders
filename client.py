@@ -160,6 +160,10 @@ class Text:
     def draw(self, window):
         text_surface = self.font.render(self.text, True, self.color)
         text_rect = text_surface.get_rect(center=self.position)
+
+        background_rect = text_rect.inflate(5, 5)
+        pygame.draw.rect(window, (255, 255, 255),background_rect)
+
         window.blit(text_surface, text_rect)
 
     def draw_large_text(self, window):
@@ -168,7 +172,6 @@ class Text:
         text_rect = text_surface.get_rect(center=self.position)
 
         window.blit(text_surface, text_rect)
-
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -198,6 +201,8 @@ class Button:
 
 
 class DiceButton(Button):
+
+
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
 
@@ -221,6 +226,9 @@ class DiceButton(Button):
             dice_image = self.dice_disabled_image
 
         window.blit(dice_image, self.rect.topleft)
+
+        if self.clickable:
+            pygame.draw.rect(window, (255, 255, 0), self.rect, 2)   #highlights dice to show clickable
 
     def roll(self):
         if self.clickable:
@@ -262,6 +270,8 @@ if __name__ == "__main__":
     winner_id = None
 
     # inialize game objects
+    # Add text on board saying "Player rolled a _"
+
     join_text = Text("Joined. Waiting for other players to join.",
                      (win_width // 2, win_height // 2 - 100), (0, 0, 0))
     ready_text = Text("Players joined. Ready to start.",
@@ -395,6 +405,9 @@ if __name__ == "__main__":
                 draw_grid()
                 take_button.draw()
                 dice_button.draw()
+                rolled_text = Text(f'Rolled a {roll_result}',
+                                   (win_width // 1 - 55, win_height - 80), (0, 0, 0))
+                rolled_text.draw_large_text(window)                                 #displays dice rolled, but takes a second click to show actual roll (first one is false)
 
                 if moves:
                     # Remove the first element from the list
@@ -421,6 +434,7 @@ if __name__ == "__main__":
                 win_text = Text(f"Player {winner_id} won!", (win_width // 2, win_height // 2 - 100), (0, 0, 0))
                 window.blit(bg, (0, 0))
                 win_text.draw_large_text(window)
+
 
             # lose screen
             elif game_state == 5:
